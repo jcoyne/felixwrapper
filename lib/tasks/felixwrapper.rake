@@ -1,4 +1,5 @@
 ## These tasks get loaded into the host application when felixwrapper is required
+require 'java_properties'
 require 'yaml'
 
 namespace :felix do
@@ -48,6 +49,11 @@ namespace :felix do
     FileList['felix_conf/*'].each do |f|
       cp_r("#{f}", 'felix/etc', :verbose => true)
     end
+    props = JavaProperties.load('felix/etc/config.properties')
+    ['org.opencastproject.streaming.directory','org.opencastproject.hls.directory'].each do |key|
+      props[key] = File.expand_path(props[key],'felix') if props.has_key?(key)
+    end
+    File.open('felix/etc/config.properties','w') { |f| f.write(props.to_s) }
   end
 
   desc "Copies the default Matterhorn configs into the bundled felix"
