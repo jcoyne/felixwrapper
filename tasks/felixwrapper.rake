@@ -62,8 +62,8 @@ namespace :felixwrapper do
 
   desc "Copies the default Matterhorn config for the bundled felix"
   task :config_matterhorn => [:init] do
-    FileList['matterhorn/conf/*'].each do |f|  
-      cp("#{f}", FELIX_PARAMS[:felix_home] + '/conf/', :verbose => true)
+    FileList['felix_conf/*'].each do |f|  
+      cp_r("#{f}", File.join(FELIX_PARAMS[:felix_home], 'etc'), :verbose => true)
     end
   end
   
