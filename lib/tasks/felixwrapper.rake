@@ -43,5 +43,16 @@ namespace :felix do
     end
   end
 
+  desc "Copies the default Matterhorn config for the bundled felix"
+  task :config_matterhorn => [:environment] do
+    FileList['felix_conf/*'].each do |f|
+      cp_r("#{f}", 'felix/etc', :verbose => true)
+    end
+  end
+
+  desc "Copies the default Matterhorn configs into the bundled felix"
+  task :config do
+    Rake::Task["felix:config_matterhorn"].invoke
+  end
 end
 
