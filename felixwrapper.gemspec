@@ -25,6 +25,7 @@ Gem::Specification.new do |s|
   s.add_dependency "childprocess"
   s.add_dependency "i18n"
   s.add_dependency "activesupport", "~>3.2.3"
+  s.add_dependency "dot-properties"
   
   # Bundler will install these gems too if you've checked this out from source from git and run 'bundle install'
   # It will not add these as dependencies if you require lyber-core for other projects
