@@ -37,6 +37,117 @@ class Felixwrapper
   # Methods inside of the class << self block can be called directly on Felixwrapper, as class methods. 
   # Methods outside the class << self block must be called on Felixwrapper.instance, as instance methods.
   class << self
+
+    attr_writer :avalon_felix_version, :url, :tmp_dir, :felix_dir, :env
+
+    def avalon_felix_version
+      @avalon_felix_version ||= "master"
+    end
+
+    def url
+      @url ||= defined(ZIP_URL) ? ZIP_URL : "https://github.com/avalonmediasystem/avalon-felix/archive/#{avalon_felix_version}.zip"
+      @url
+    end
+
+    def tmp_dir
+      @tmp_dir ||= 'tmp'
+    end
+
+    def zip_file
+      ENV['FELIX_ZIP'] || File.join(tmp_dir, url.split('/').last)
+    end
+
+    def felix_dir
+      @felix_dir ||= 'felix'
+    end
+
+    def download(url = nil)
+      return if File.exists? zip_file
+      self.url = url if url
+      logger.info "Downloading felix at #{self.url} ..."
+      FileUtils.mkdir tmp_dir unless File.exists? tmp_dir
+
+      begin
+        open(self.url) do |io|
+          IO.copy_stream(io,zip_file)
+        end
+      rescue Exception => e
+        abort "Unable to download felix from #{self.url} #{e.message}"
+      end
+    end
+
+    def unzip
+      download unless File.exists? zip_file
+      logger.info "Unpacking #{zip_file}..."
+      tmp_save_dir = File.join tmp_dir, 'felix_generator'
+      begin
+        Zip::File.open(zip_file) do |zip_file|
+          # Handle entries one by one
+          zip_file.each do |entry|
+            dest_file = File.join(tmp_save_dir,entry.name)
+            FileUtils.remove_entry(dest_file,true)
+            entry.extract(dest_file)
+          end
+        end
+      rescue Exception => e
+        abort "Unable to unzip #{zip_file} into tmp_save_dir/ #{e.message}"
+      end
+
+      # Remove the old felix directory if it exists
+      FileUtils.remove_dir(felix_dir,true)
+
+      # Move the expanded zip file into the final destination.
+      expanded_dir = expanded_zip_dir(tmp_save_dir)
+      begin
+        FileUtils.mv(expanded_dir, felix_dir)
+      rescue Exception => e
+        abort "Unable to move #{expanded_dir} into #{felix_dir}/ #{e.message}"
+      end
+    end
+
+    def expanded_zip_dir(tmp_save_dir)
+      Dir[File.join(tmp_save_dir, "*")].first
+    end
+
+    def clean
+      FileUtils.remove_dir(felix_dir,true)
+      unzip
+    end
+
+    def reset_config
+      @app_root = nil
+      @env = nil
+      @url = nil
+      @avalon_felix_version = nil
+    end
+
+    def app_root
+      return @app_root if @app_root
+      @app_root = Rails.root if defined?(Rails) and defined?(Rails.root)
+      @app_root ||= APP_ROOT if defined?(APP_ROOT)
+      @app_root ||= '.'
+    end
+
+    def env
+      @env ||= begin
+        case
+        when ENV['FELIXWRAPPER_ENV']
+          ENV['FELIXWRAPPER_ENV']
+        when defined?(Rails) && Rails.respond_to?(:env)
+          Rails.env
+        when ENV['RAILS_ENV']
+          ENV['RAILS_ENV']
+        when ENV['environment']
+          ENV['environment']
+        else
+          default_environment
+        end
+      end
+    end
+
+    def default_environment
+      'development'
+    end
     
     def version
       @version ||= File.read(File.join(File.dirname(__FILE__), '..', 'VERSION')).chomp
@@ -124,6 +235,8 @@ class Felixwrapper
         felix_server.stop
       end
 
+      raise error if error
+
       return error
     end
     
@@ -132,9 +245,10 @@ class Felixwrapper
     # @example 
     #    Felixwrapper.start(:felix_home => '/path/to/felix', :felix_port => '8983')
     def start(params)
-       Felixwrapper.configure(params)
-       Felixwrapper.instance.start
-       return Felixwrapper.instance
+      unzip unless File.exists? felix_dir
+      Felixwrapper.configure(params)
+      Felixwrapper.instance.start
+      return Felixwrapper.instance
     end
     
     # Convenience method for configuring and starting felix with one command. Note
