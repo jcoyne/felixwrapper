@@ -1,5 +1,4 @@
 # Felixwrapper is a Singleton class, so you can only create one felix instance at a time.
-require 'loggable'
 require 'singleton'
 require 'fileutils'
 require 'shellwords'
@@ -8,14 +7,14 @@ require 'timeout'
 require 'childprocess'
 require 'active_support/core_ext/hash'
 require 'net/http'
+require 'logger'
 
 #Dir[File.expand_path(File.join(File.dirname(__FILE__),"tasks/*.rake"))].each { |ext| load ext } if defined?(Rake)
 
 class Felixwrapper
   
   include Singleton
-  include Loggable
-  
+
   attr_accessor :port         # What port should felix start on? Default is 8080
   attr_accessor :felix_home   # Where is felix located? 
   attr_accessor :startup_wait # After felix starts, how long to wait until starting the tests? 
@@ -418,7 +417,11 @@ class Felixwrapper
    def pid
       File.open( pid_path ) { |f| return f.gets.to_i } if File.exist?(pid_path)
    end
-   
+
+   def logger
+     @logger ||= Logger.new(STDOUT)
+   end
+   attr_writer :logger
 end
 
 load File.join(File.dirname(__FILE__),"tasks/felixwrapper.rake") if defined?(Rake)

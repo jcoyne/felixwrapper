@@ -4,5 +4,5 @@ require 'spec/autorun'
 require 'felixwrapper'
 
 Spec::Runner.configure do |config|
-  config.mock_with :mocha
+  # config.mock_with :mocha
 end
